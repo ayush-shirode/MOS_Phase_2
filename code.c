@@ -1,22 +1,8 @@
-// cd "/home/ayush/OS_Assignment/CP_Phase2/" && gcc code.c utils.c -o code && "/home/ayush/OS_Assignment/CP_Phase2/"code
-
 #include<stdio.h>
 #include <stdbool.h>
 #include<time.h>
 #include "utils.h"
-
-// Declaring the required Memory and Registers
-char M[100][4];     // main storage of size 100 x 4
-char IR[4];         // IR (Instruction register) of size 4
-char R[4];          // R (General Purpose register) of size 4
-int IC;             // Instruction Counter
-int C;              // Toggle Register
-int SI;             // Supervisor Interept
-int TL;
-int LL;
-char valid_first[] = {76, 83, 67, 66, 71, 80, 72};
-char valid_second[] = {82, 84, 68};
-
+#include "globals.h"
 
 FILE *fin, *fout;
 
@@ -317,7 +303,7 @@ int main() {
 
 
 /*
-// Validations Added
+// Validations Added for instruction as well as operand
 1. Checking if Input and Output File exists
 2. checking Memery Overflow
 3. Invalid Instruction

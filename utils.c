@@ -1,5 +1,6 @@
 #include<stdbool.h>
 #include "utils.h"
+#include "globals.h"
 
 // Function to Compare String
 bool cmpString(char s1[], char s2[], int size) {
@@ -28,3 +29,12 @@ int lenString(char s[]) {
     return ans;
 }
 
+int randomNumberGenerator() {
+    int n;
+    do {
+        n = rand() % 10;
+    } while (frameUsed[n]);
+    
+    frameUsed[n] = true;
+    return n;
+}
