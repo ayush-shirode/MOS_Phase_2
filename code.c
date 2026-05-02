@@ -1,6 +1,9 @@
+// cd "/home/ayush/OS_Assignment/CP_Phase2/" && gcc code.c utils.c -o code && "/home/ayush/OS_Assignment/CP_Phase2/"code
+
 #include<stdio.h>
 #include <stdbool.h>
 #include<time.h>
+#include "utils.h"
 
 // Declaring the required Memory and Registers
 char M[100][4];     // main storage of size 100 x 4
@@ -20,33 +23,6 @@ void MOS();
 void read();
 void write();
 void terminate();
-
-// Function to Compare String
-bool cmpString(char s1[], char s2[], int size) {
-    for (int i = 0; i < size; i++) {
-        if (s1[i] != s2[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-// Function to Compare String
-void countLimit(char s1[], int* var, int start, int end) {
-    for(int i = start; i < end; i++) {
-        (*var) = (*var) * 10 + (s1[i] - '0');
-    }
-}
-
-
-int lenString(char s[]) {
-    int ans = 0;
-    while (s[ans] != '\0') {
-        ans++;
-    }
-
-    return ans;
-}
 
 // INIT Function (initialize the system by empty variable)
 void init() {
