@@ -14,6 +14,9 @@ int C;              // Toggle Register
 int SI;             // Supervisor Interept
 int TL;
 int LL;
+char valid_first[] = {76, 83, 67, 66, 71, 80, 72};
+char valid_second[] = {82, 84, 68};
+
 
 FILE *fin, *fout;
 
@@ -102,11 +105,13 @@ void executeProgram() {
             printf("%s", "Time limit Exceeded !!\n");
             break;
         }
+
         // To avoid Infinite loop
         if (step++ > 1000) {
             printf("Infinite loop detected\n");
             break;
         }
+
         // Fetch the Instruction
         for (int i = 0; i < 4; i++) {
             IR[i] = M[IC][i];
@@ -117,6 +122,20 @@ void executeProgram() {
         // Decode and Execute the Instructions
 
 
+        // Validating Instructions
+        bool found_first = false;
+        bool found_second = false;
+        for (int i = 0; i < 7; i++) {
+            if (IR[0] == valid_first[i]) found_first = true;
+        }
+        for (int i = 0; i < 3; i++) {
+            if (IR[1] == valid_second[i]) found_second = true;
+        }
+
+        if (!found_first || !found_second) {
+            printf("%s", "Invalid Instruction !!\n");
+            return;
+        }
 
         // LR Instruction (load Register)
         if (IR[0] == 'L' && IR[1] == 'R') {
@@ -237,12 +256,21 @@ void read() {
 void write() {
     int addr = (IR[2]-'0')*10 + (IR[3]-'0');
 
+    // Implememted Line Limit Exceeded Logic
+    if (LL <= 0) {
+        printf("%s", "Line Limit Exceeded !!\n");
+        return;
+    }
+
     for (int i = addr; i < addr + 10 && i < 100; i++) {
+
+
         for (int j = 0; j < 4; j++) {
             fputc(M[i][j], fout);
         }
     }
     fputc('\n', fout);
+    LL--;
 }
 
 void terminate() {
