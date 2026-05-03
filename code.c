@@ -68,6 +68,7 @@ void init() {
 
 void load() {
     char word[1024];     // Stores each instruction which is to be executed
+    bool dataMode = false; // when true, lines are input/data and should not be loaded into M
 
     while (fgets(word, sizeof(word), fin)) {
         // printf("%s", word);
@@ -87,11 +88,20 @@ void load() {
         }
         else if (cmpString(word, "$DTA", 4)) {
             printf("%s", "DTA (Starting Execution)\n");
+            dataMode = true;
             startExecution();
         }
 
-        else if (cmpString(word, "$END", 4)) {
+        else if (cmpString(word, "$END", 4) && dataMode) {
+            // end of data for current job — stop treating subsequent lines as data
+            dataMode = false;
             printf("%s", "END (Instruction Completed)\n");
+            continue;
+        }
+
+        // If we're in data mode, do NOT load this line into M (it's input for GD)
+        if (dataMode) {
+            // just skip storing data lines into memory here — GD will read them from fin
             continue;
         }
         else {
