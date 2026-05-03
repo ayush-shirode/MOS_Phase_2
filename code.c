@@ -13,9 +13,32 @@ void read();
 void write();
 void terminate();
 
+int VA;
+int PI = 0;
+int faultVA;   // store faulting VA
+int TI = 0;
+
+int addressMap(int VA) {
+    int page = VA / 10;
+    int offset = VA % 10;
+
+    if (pageTable[page] == -1) {
+        PI = 3;
+        faultVA = VA;
+        return -1;
+    }
+
+    return pageTable[page] * 10 + offset;
+}
+
+int getRA(int VA) {
+    int RA = addressMap(VA);
+    return RA;
+}
+
 // INIT Function (initialize the system by empty variable)
 void init() {
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 300; i++)
         for (int j = 0; j < 4; j++)
             M[i][j] = ' ';
 
@@ -27,12 +50,24 @@ void init() {
     IC = 0;
     C = 0;
     SI = 0;
+
+    // Assign Page table register using random number generator
+    for (int i = 0; i < 10; i++) {
+        pageTable[i] = -1;
+    }
+
+    for (int i = 0; i < 30; i++) {
+        frameUsed[i] = false;
+    }
+
+    int frame = randomNumberGenerator();
+    PTR = frame * 10;
+    
+    VA = 0;             // Stores virtual address
 }
 
 void load() {
-    int m = 0;          // It Points location at which instructions are stored
-
-    char word[100];     // Stores each instruction which is to be executed
+    char word[1024];     // Stores each instruction which is to be executed
 
     while (fgets(word, sizeof(word), fin)) {
         // printf("%s", word);
@@ -40,6 +75,8 @@ void load() {
         if (cmpString(word, "$AMJ", 4)) {
             printf("%s", "AMJ (initializing the String)\n");
 
+            TL = 0;
+            LL = 0;
             // Time Limit calculation
             countLimit(word, &TL, 8, 12);
 
@@ -47,7 +84,6 @@ void load() {
             countLimit(word, &LL, 12, 16);
 
             init();
-            m = 0;
         }
         else if (cmpString(word, "$DTA", 4)) {
             printf("%s", "DTA (Starting Execution)\n");
@@ -64,14 +100,28 @@ void load() {
             {
 
                 // Validation for memory overflow
-                if (m >= 100) {
+                if (VA >= 300) {
                     printf("Memory overflow\n");
                     return;
                 }                
-                for (int j = 0; j < 4 && word[k] != '\n' && word[k] != '\0'; j++) {
-                    M[m][j] = word[k++];
+
+                int page = VA / 10;
+                int offset = VA % 10;
+                if (pageTable[page] == -1) {
+                    int frame = randomNumberGenerator();
+                    pageTable[page] = frame;
                 }
-                m++;
+                
+                int RA = pageTable[page] * 10 + offset;
+
+                for (int j = 0; j < 4; j++) {
+                    if (word[k] != '\n' && word[k] != '\0')
+                        M[RA][j] = word[k++];
+                    else
+                        M[RA][j] = ' ';
+                }
+
+                VA++;
             }
         }
     }
@@ -87,11 +137,6 @@ void executeProgram() {
     int step = 0;
     while (true)
     {
-        if (TL <= 0) {
-            printf("%s", "Time limit Exceeded !!\n");
-            break;
-        }
-
         // To avoid Infinite loop
         if (step++ > 1000) {
             printf("Infinite loop detected\n");
@@ -99,14 +144,38 @@ void executeProgram() {
         }
 
         // Fetch the Instruction
+        int RA = addressMap(IC);
+        if (PI != 0) {
+            MOS(); 
+            continue;
+        }
+
+        if (RA == -1) {
+            MOS();
+            continue;
+        }
+
+        // Fetch instruction from REAL ADDRESS
         for (int i = 0; i < 4; i++) {
-            IR[i] = M[IC][i];
+            IR[i] = M[RA][i];
         }
 
         IC++;
         
         // Decode and Execute the Instructions
 
+        // Handle H
+        if (IR[0] == 'H' && IR[1] == ' ' && IR[2] == ' ' && IR[3] == ' ') {
+            TL--;
+            if (TL < 0) { 
+                TI = 2; 
+                MOS(); 
+                break; 
+            }
+            SI = 3;
+            MOS();
+            break;
+        }
 
         // Validating Instructions
         bool found_first = false;
@@ -130,12 +199,19 @@ void executeProgram() {
                 printf("Invalid operand\n");
                 break;
             }
-            if (addr < 0 || addr >= 100) {
+            if (addr < 0 || addr >= 300) {
                 printf("Memory address out of bounds\n");
                 break;
             }
             TL--;
-            for (int i = 0; i < 4; i++) R[i] = M[addr][i];
+            if (TL < 0) {
+                TI = 2;
+                MOS();
+                break;
+            }
+
+            int RA = getRA(addr);
+            for (int i = 0; i < 4; i++) R[i] = M[RA][i];
         }
 
         // SR (Store Register)
@@ -145,12 +221,19 @@ void executeProgram() {
                 printf("Invalid operand\n");
                 break;
             }
-            if (addr < 0 || addr >= 100) {
+            if (addr < 0 || addr >= 300) {
                 printf("Memory address out of bounds\n");
                 break;
             }
             TL--;
-            for (int i = 0; i < 4; i++) M[addr][i] = R[i];
+            if (TL < 0) {
+                TI = 2;
+                MOS();
+                break;
+            }
+
+            int RA = getRA(addr);
+            for (int i = 0; i < 4; i++) M[RA][i] = R[i];
         }
         
         // CR (Compare Register)
@@ -160,18 +243,25 @@ void executeProgram() {
                 printf("Invalid operand\n");
                 break;
             }
-            if (addr < 0 || addr >= 100) {
+            if (addr < 0 || addr >= 300) {
                 printf("Memory address out of bounds\n");
                 break;
             }
             C = 1;
+            int RA = getRA(addr);
             for (int i = 0; i < 4; i++) {
-                if (R[i] != M[addr][i]) {
+                if (R[i] != M[RA][i]) {
                     C = 0;
                     break;
                 }
             }
             TL--;
+            if (TL < 0) {
+                TI = 2;
+                MOS();
+                break;
+            }
+
         }
 
         // BT (Branch if True)
@@ -181,11 +271,17 @@ void executeProgram() {
                 printf("Invalid operand\n");
                 break;
             }
-            if (addr < 0 || addr >= 100) {
+            if (addr < 0 || addr >= 300) {
                 printf("Memory address out of bounds\n");
                 break;
             }
             TL--;
+            if (TL < 0) {
+                TI = 2;
+                MOS();
+                break;
+            }
+
             if (C == 1) IC = addr;
         }
         
@@ -193,6 +289,12 @@ void executeProgram() {
         else if (IR[0] == 'G' && IR[1] == 'D') {
             SI = 1;
             TL--;
+            if (TL < 0) {
+                TI = 2;
+                MOS();
+                break;
+            }
+
             MOS();
         }
 
@@ -200,17 +302,14 @@ void executeProgram() {
         else if (IR[0] == 'P' && IR[1] == 'D') {
             SI = 2;
             TL--;
+            if (TL < 0) {
+                TI = 2;
+                MOS();
+                break;
+            }
+
             MOS();
         }
-
-        // H (Halt)
-        else if (IR[0] == 'H') {
-            SI = 3;
-            TL--;
-            MOS();
-            break;
-        }
-
         else {
             printf("Invalid instruction: %c%c%c%c\n", IR[0], IR[1], IR[2], IR[3]);
             break;
@@ -229,12 +328,19 @@ void read() {
     }
 
     int k = 0;
-    for (int i = addr; i < addr + 10 && i < 100; i++) {
+    int VA = addr;
+
+    for (int i = 0; i < 10; i++) {
+        int RA = getRA(addr + i);
+        if (PI != 0) { 
+            MOS(); 
+            return; 
+        }
         for (int j = 0; j < 4; j++) {
-            if (word[k] == '\n' || word[k] == '\0')
-                M[i][j] = ' ';
+            if (word[k] != '\0' && word[k] != '\n')
+                M[RA][j] = word[k++];
             else
-                M[i][j] = word[k++];
+                M[RA][j] = ' ';
         }
     }
 }
@@ -248,13 +354,16 @@ void write() {
         return;
     }
 
-    for (int i = addr; i < addr + 10 && i < 100; i++) {
-
-
-        for (int j = 0; j < 4; j++) {
-            fputc(M[i][j], fout);
+    for (int i = 0; i < 10; i++) {
+        int RA = getRA(addr + i);
+        if (PI != 0) { 
+            MOS(); 
+            return; 
         }
+        for (int j = 0; j < 4; j++)
+            fputc(M[RA][j], fout);
     }
+
     fputc('\n', fout);
     LL--;
 }
@@ -263,13 +372,42 @@ void terminate() {
     fprintf(fout, "\n\n");
 }
 
+void handlePageFault() {
+    int page = faultVA / 10;
+ 
+    int frame = randomNumberGenerator();
+    pageTable[page] = frame;
+ 
+    PI = 0;
+    IC--;
+}
+
+
 void MOS() {
-    if (SI == 1)
-        read();
-    else if (SI == 2)
-        write();
-    else if (SI == 3)
+    if (TI == 2) {
+        printf("Time Limit Exceeded\n");
         terminate();
+        TI = 0;
+        return;
+    }
+
+    if (PI == 3) {
+        handlePageFault();
+        return;
+    }
+
+    if (SI == 1) {
+        read();
+        SI = 0;
+    }
+    else if (SI == 2) {
+        write();
+        SI = 0;
+    }
+    else if (SI == 3) {
+        terminate();
+        SI = 0;
+    }
 }
 
 int main() {
