@@ -1,7 +1,6 @@
 #include<stdio.h>
 #include <stdbool.h>
 #include<time.h>
-#include<string.h>
 #include "utils.h"
 #include "globals.h"
 
@@ -18,7 +17,7 @@ void printMemory();
 
 int VA;
 int PI = 0;
-int faultVA;   // store faulting VA
+int faultVA;
 int TI = 0;
 
 int addressMap(int VA) {
@@ -45,7 +44,6 @@ int getRA(int VA) {
     return RA;
 }
 
-// INIT Function (initialize the system)
 void init() {
     for (int i = 0; i < 300; i++)
         for (int j = 0; j < 4; j++)
@@ -65,7 +63,6 @@ void init() {
     LLC = 0;
     EM = 0;
 
-    // Initialize page table
     for (int i = 0; i < 10; i++) {
         pageTable[i] = -1;
     }
@@ -80,11 +77,9 @@ void init() {
     VA = 0;
 }
 
-// Print memory contents to the terminal
 void printMemory() {
     printf("\n========== MEMORY DUMP ==========\n");
     for (int i = 0; i < 300; i++) {
-        // Only print non-empty memory locations
         bool empty = true;
         for (int j = 0; j < 4; j++) {
             if (M[i][j] != ' ') {
@@ -114,7 +109,6 @@ void load() {
         if (cmpString(word, "$AMJ", 4)) {
             printf("%s", "AMJ (initializing the Job)\n");
 
-            // Extract Job ID (4 chars at positions 4-7)
             jobID[0] = word[4];
             jobID[1] = word[5];
             jobID[2] = word[6];
@@ -123,10 +117,9 @@ void load() {
 
             TL = 0;
             LL = 0;
-            // Time Limit calculation (positions 8-12)
+
             countLimit(word, &TL, 8, 12);
 
-            // Line Limit calculation (positions 12-16)
             countLimit(word, &LL, 12, 16);
 
             printf("Job ID: %s, Time Limit: %d, Line Limit: %d\n", jobID, TL, LL);
@@ -137,17 +130,14 @@ void load() {
         else if (cmpString(word, "$DTA", 4)) {
             printf("%s", "DTA (Starting Execution)\n");
 
-            // Print memory before execution
             printf("\n--- Memory state BEFORE execution ---\n");
             printMemory();
 
             startExecution();
 
-            // Print memory after execution
             printf("\n--- Memory state AFTER execution ---\n");
             printMemory();
 
-            // Skip remaining data lines until $END
             while (fgets(word, sizeof(word), fin)) {
                 if (cmpString(word, "$END", 4)) {
                     printf("%s", "END (Job Completed)\n\n");
@@ -157,11 +147,9 @@ void load() {
             continue;
         }
 
-        // Load program instructions into memory
         int k = 0;
         while (k < lenString(word) && word[k] != '\n' && word[k] != '\r')
         {
-            // Validation for memory overflow
             if (VA >= 100) {
                 printf("Memory overflow\n");
                 return;
@@ -188,7 +176,6 @@ void load() {
     }
 }
 
-// START EXECUTION
 void startExecution() {
     IC = 0;
     executeProgram();
@@ -198,7 +185,6 @@ void executeProgram() {
     int step = 0;
     while (true)
     {
-        // To avoid Infinite loop
         if (step++ > 1000) {
             printf("Infinite loop detected\n");
             break;
@@ -206,11 +192,8 @@ void executeProgram() {
 
         PI = 0;
 
-        // Fetch the Instruction
         int RA = addressMap(IC);
         if (PI != 0) {
-            // Page fault during fetch — this is an invalid page access for code
-            // In a simple MOS, this means the program is accessing unmapped code pages
             handlePageFault();
             PI = 0;
             RA = addressMap(IC);
@@ -221,23 +204,18 @@ void executeProgram() {
             }
         }
 
-        // Fetch instruction from REAL ADDRESS
         for (int i = 0; i < 4; i++) {
             IR[i] = M[RA][i];
         }
 
         IC++;
-        
-        // Decode and Execute the Instructions
 
-        // Handle H (Halt)
         if (IR[0] == 'H' && IR[1] == ' ' && IR[2] == ' ' && IR[3] == ' ') {
             SI = 3;
             MOS();
             break;
         }
 
-        // Validating Instructions
         bool found_first = false;
         bool found_second = false;
         for (int i = 0; i < 7; i++) {
@@ -254,7 +232,6 @@ void executeProgram() {
             return;
         }
 
-        // LR Instruction (Load Register)
         if (IR[0] == 'L' && IR[1] == 'R') {
             int addr = (IR[2]-'0')*10 + (IR[3]-'0');
             if (!(IR[2] >= '0' && IR[2] <= '9' && IR[3] >= '0' && IR[3] <= '9')) {
@@ -279,7 +256,6 @@ void executeProgram() {
             for (int i = 0; i < 4; i++) R[i] = M[ra][i];
         }
 
-        // SR (Store Register)
         else if (IR[0] == 'S' && IR[1] == 'R') {
             int addr = (IR[2]-'0')*10 + (IR[3]-'0');
             if (!(IR[2] >= '0' && IR[2] <= '9' && IR[3] >= '0' && IR[3] <= '9')) {
@@ -304,7 +280,6 @@ void executeProgram() {
             for (int i = 0; i < 4; i++) M[ra][i] = R[i];
         }
         
-        // CR (Compare Register)
         else if (IR[0] == 'C' && IR[1] == 'R') {
             int addr = (IR[2]-'0')*10 + (IR[3]-'0');
             if (!(IR[2] >= '0' && IR[2] <= '9' && IR[3] >= '0' && IR[3] <= '9')) {
@@ -333,7 +308,6 @@ void executeProgram() {
             }
         }
 
-        // BT (Branch if True)
         else if (IR[0] == 'B' && IR[1] == 'T') {
             int addr = (IR[2]-'0')*10 + (IR[3]-'0');
             if (!(IR[2] >= '0' && IR[2] <= '9' && IR[3] >= '0' && IR[3] <= '9')) {
@@ -351,7 +325,6 @@ void executeProgram() {
             if (C == 1) IC = addr;
         }
         
-        // GD (Get Data)
         else if (IR[0] == 'G' && IR[1] == 'D') {
             if (!(IR[2] >= '0' && IR[2] <= '9' && IR[3] >= '0' && IR[3] <= '9')) {
                 printf("Invalid operand\n");
@@ -370,7 +343,6 @@ void executeProgram() {
             MOS();
         }
 
-        // PD (Put Data)
         else if (IR[0] == 'P' && IR[1] == 'D') {
             if (!(IR[2] >= '0' && IR[2] <= '9' && IR[3] >= '0' && IR[3] <= '9')) {
                 printf("Invalid operand\n");
@@ -406,7 +378,6 @@ void read() {
         return;
     }
 
-    // Check if we accidentally read $END
     if (cmpString(word, "$END", 4)) {
         printf("Out of Data: Hit $END while reading data!\n");
         terminate(0);
@@ -435,7 +406,6 @@ void read() {
 void write() {
     int addr = (IR[2]-'0')*10 + (IR[3]-'0');
 
-    // Check Line Limit
     LLC++;
     if (LLC > LL) {
         printf("Line Limit Exceeded !!\n");
@@ -490,6 +460,7 @@ void terminate(int errorCode) {
 }
 
 void handlePageFault() {
+    printf("%s\n", "page fault occured !!");
     int page = faultVA / 10;
  
     int frame = randomNumberGenerator();

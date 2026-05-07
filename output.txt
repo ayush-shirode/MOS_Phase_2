@@ -1,8 +1,11 @@
+ABCD                                    
+ABCD                                    
+MATCH                                   
 
-JOB ID : 0001
+JOB ID : 0401
 NO ERROR
-IC : 5
+IC : 12
 IR : H   
-TTC : 4
-LLC : 0
+TTC : 10
+LLC : 3
 
