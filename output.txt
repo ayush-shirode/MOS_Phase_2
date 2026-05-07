@@ -1,11 +1,9 @@
 ABCD                                    
-ABCD                                    
-MATCH                                   
 
 JOB ID : 0401
 NO ERROR
-IC : 12
+IC : 4
 IR : H   
-TTC : 10
-LLC : 3
+TTC : 3
+LLC : 1
 

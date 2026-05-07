@@ -3,7 +3,6 @@
 #include<stdbool.h>
 
 extern bool frameUsed[30];
-// Declaring the required Memory and Registers
 
 extern char M[300][4];     // main storage of size 300 x 4
 extern char IR[4];         // IR (Instruction register) of size 4

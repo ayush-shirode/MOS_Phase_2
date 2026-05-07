@@ -227,7 +227,7 @@ void executeProgram() {
 
         if (!found_first || !found_second) {
             printf("Invalid Instruction: %c%c%c%c\n", IR[0], IR[1], IR[2], IR[3]);
-            PI = 1; // Opcode error
+            PI = 1;
             terminate(4);
             return;
         }
