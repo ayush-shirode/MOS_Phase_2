@@ -12,6 +12,7 @@ void MOS();
 void read();
 void write();
 void terminate();
+void handlePageFault();
 
 int VA;
 int PI = 0;
@@ -85,19 +86,27 @@ void load() {
             countLimit(word, &LL, 12, 16);
 
             init();
+            continue;
         }
         else if (cmpString(word, "$DTA", 4)) {
             printf("%s", "DTA (Starting Execution)\n");
-            dataMode = true;
             startExecution();
-        }
 
-        else if (cmpString(word, "$END", 4) && dataMode) {
-            // end of data for current job — stop treating subsequent lines as data
-            dataMode = false;
-            printf("%s", "END (Instruction Completed)\n");
+            while (fgets(word, sizeof(word), fin)) {
+                if (cmpString(word, "$END", 4)) {
+                    printf("%s", "END (Instruction Completed)\n");
+                    break; 
+                }
+            }
             continue;
         }
+
+        // else if (cmpString(word, "$END", 4) && dataMode) {
+        //     // end of data for current job — stop treating subsequent lines as data
+        //     dataMode = false;
+        //     printf("%s", "END (Instruction Completed)\n");
+        //     break;
+        // }
 
         // If we're in data mode, do NOT load this line into M (it's input for GD)
         if (dataMode) {
@@ -153,6 +162,8 @@ void executeProgram() {
             break;
         }
 
+        PI = 0;
+
         // Fetch the Instruction
         int RA = addressMap(IC);
         if (PI != 0) {
@@ -160,10 +171,10 @@ void executeProgram() {
             continue;
         }
 
-        if (RA == -1) {
-            MOS();
-            continue;
-        }
+        // if (RA == -1) {
+        //     MOS();
+        //     continue;
+        // }
 
         // Fetch instruction from REAL ADDRESS
         for (int i = 0; i < 4; i++) {
@@ -198,6 +209,7 @@ void executeProgram() {
         }
 
         if (!found_first || !found_second) {
+            printf("%c %c\n", IR[0], IR[1]);
             printf("%s", "Invalid Instruction !!\n");
             return;
         }
@@ -327,27 +339,55 @@ void executeProgram() {
     }
 }
 
+// void read() {
+//     char word[40];
+//     int addr = (IR[2]-'0')*10 + (IR[3]-'0');
+
+//     // reading if Input file is not Empty
+//     if (fgets(word, sizeof(word), fin) == NULL) {
+//         printf("No data available for GD\n");
+//         return;
+//     }
+
+//     int k = 0;
+//     int VA = addr;
+
+//     for (int i = 0; i < 10; i++) {
+//         int RA = getRA(addr + i);
+//         if (PI != 0) { 
+//             MOS(); 
+//             return; 
+//         }
+//         for (int j = 0; j < 4; j++) {
+//             if (word[k] != '\0' && word[k] != '\n')
+//                 M[RA][j] = word[k++];
+//             else
+//                 M[RA][j] = ' ';
+//         }
+//     }
+// }
+
 void read() {
-    char word[40];
+    char word[41]; // Buffer for the input line
     int addr = (IR[2]-'0')*10 + (IR[3]-'0');
 
-    // reading if Input file is not Empty
     if (fgets(word, sizeof(word), fin) == NULL) {
-        printf("No data available for GD\n");
         return;
     }
 
     int k = 0;
-    int VA = addr;
-
     for (int i = 0; i < 10; i++) {
-        int RA = getRA(addr + i);
-        if (PI != 0) { 
-            MOS(); 
-            return; 
+        // We must map every single virtual address in the block
+        int RA = getRA(addr + i); 
+        
+        // If a page fault occurs while reading data, we handle it
+        if (PI == 3) {
+            handlePageFault();
+            RA = getRA(addr + i); // Get the new RA after fault is fixed
         }
+
         for (int j = 0; j < 4; j++) {
-            if (word[k] != '\0' && word[k] != '\n')
+            if (word[k] != '\0' && word[k] != '\n' && word[k] != '\r')
                 M[RA][j] = word[k++];
             else
                 M[RA][j] = ' ';
@@ -389,7 +429,6 @@ void handlePageFault() {
     pageTable[page] = frame;
  
     PI = 0;
-    IC--;
 }
 
 
