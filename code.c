@@ -73,6 +73,7 @@ void init() {
 
     int frame = randomNumberGenerator();
     PTR = frame * 10;
+    printf("Page Table Location: %d", PTR);
     
     VA = 0;
 }
@@ -163,6 +164,8 @@ void load() {
             }
             
             int RA = pageTable[page] * 10 + offset;
+
+            printf("%d ", RA);
 
             for (int j = 0; j < 4; j++) {
                 if (word[k] != '\n' && word[k] != '\0' && word[k] != '\r')
